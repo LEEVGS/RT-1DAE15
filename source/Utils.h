@@ -12,9 +12,35 @@ namespace dae
 		//SPHERE HIT-TESTS
 		inline bool HitTest_Sphere(const Sphere& sphere, const Ray& ray, HitRecord& hitRecord, bool ignoreHitRecord = false)
 		{
-			//todo W1
-			assert(false && "No Implemented Yet!");
-			return false;
+			float a, b, c, d;
+			a = Vector3::Dot(ray.direction, ray.direction);
+			b = Vector3::Dot(2 * ray.direction, ray.origin - sphere.origin);
+			c = Vector3::Dot(ray.origin - sphere.origin, ray.origin - sphere.origin) - (sphere.radius * sphere.radius);
+			d = sqrtf((b * b) - (4 * a * c));
+
+			if (AreEqual(d, 0.f))
+			{
+				hitRecord.didHit = true;
+				hitRecord.t = b / (2*a);
+				hitRecord.materialIndex = sphere.materialIndex;
+			}
+			else if (d > 0.f)
+			{
+				hitRecord.didHit = true;
+				hitRecord.materialIndex = sphere.materialIndex;
+				float t1, t2;
+				t1 = (-b + d) / (2 * a);
+				t2 = (-b - d) / (2 * a);
+				if (t1 > t2)
+				{
+					hitRecord.t = t2;
+				}
+				else
+				{
+					hitRecord.t = t1;
+				}
+			}
+			return hitRecord.didHit;
 		}
 
 		inline bool HitTest_Sphere(const Sphere& sphere, const Ray& ray)
@@ -27,9 +53,15 @@ namespace dae
 		//PLANE HIT-TESTS
 		inline bool HitTest_Plane(const Plane& plane, const Ray& ray, HitRecord& hitRecord, bool ignoreHitRecord = false)
 		{
-			//todo W1
-			assert(false && "No Implemented Yet!");
-			return false;
+			float t;
+			t = (Vector3::Dot((plane.origin - ray.origin), plane.normal) / Vector3::Dot(ray.direction, plane.normal));
+			if (t > FLT_EPSILON)
+			{
+				hitRecord.didHit = true;
+				hitRecord.materialIndex = plane.materialIndex;
+				hitRecord.t = t;
+			}
+			return hitRecord.didHit;
 		}
 
 		inline bool HitTest_Plane(const Plane& plane, const Ray& ray)

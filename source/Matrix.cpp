@@ -104,9 +104,11 @@ namespace dae {
 
 	Matrix Matrix::CreateTranslation(float x, float y, float z)
 	{
-		//todo W1
-		assert(false && "Not Implemented Yet");
-		return {};
+		Matrix matrix{};
+		matrix.data[0][3] = x;
+		matrix.data[1][3] = y;
+		matrix.data[2][3] = z;
+		return matrix;
 	}
 
 	Matrix Matrix::CreateTranslation(const Vector3& t)
@@ -116,30 +118,42 @@ namespace dae {
 
 	Matrix Matrix::CreateRotationX(float pitch)
 	{
-		//todo W1
-		assert(false && "Not Implemented Yet");
-		return {};
+		Matrix matrix{};
+		matrix[1][1] = cosf(pitch);
+		matrix[1][2] = -sinf(pitch);
+		matrix[2][1] = sinf(pitch);
+		matrix[2][2] = cosf(pitch);
+		return matrix;
 	}
 
 	Matrix Matrix::CreateRotationY(float yaw)
 	{
-		//todo W1
-		assert(false && "Not Implemented Yet");
-		return {};
+		Matrix matrix{};
+		matrix[0][0] = cosf(yaw);
+		matrix[0][2] = sinf(yaw);
+		matrix[2][0] = -sinf(yaw);
+		matrix[2][2] = cosf(yaw);
+		return matrix;
 	}
 
 	Matrix Matrix::CreateRotationZ(float roll)
 	{
-		//todo W1
-		assert(false && "Not Implemented Yet");
-		return {};
+		Matrix matrix{};
+		matrix[0][0] = cosf(roll);
+		matrix[0][1] = -sinf(roll);
+		matrix[1][0] = sinf(roll);
+		matrix[1][1] = cosf(roll);
+		return matrix;
 	}
 
 	Matrix Matrix::CreateRotation(const Vector3& r)
 	{
-		//todo W1
-		assert(false && "Not Implemented Yet");
-		return {};
+		Matrix matrix{};
+		//matrix[0][0] = cosf(r.x) * cosf(r.z);
+		//matrix[0][1] = cosf(r.y) * sinf(r.z);
+		//matrix[0][2] = -sinf(r.y);
+		matrix = CreateRotationX(r.x) * CreateRotationY(r.y) * CreateRotationZ(r.z);
+		return matrix;
 	}
 
 	Matrix Matrix::CreateRotation(float pitch, float yaw, float roll)
@@ -149,9 +163,11 @@ namespace dae {
 
 	Matrix Matrix::CreateScale(float sx, float sy, float sz)
 	{
-		//todo W1
-		assert(false && "Not Implemented Yet");
-		return {};
+		Matrix matrix{};
+		matrix[0][0] = sx;
+		matrix[1][1] = sy;
+		matrix[2][2] = sz;
+		return matrix;
 	}
 
 	Matrix Matrix::CreateScale(const Vector3& s)

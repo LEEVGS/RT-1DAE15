@@ -35,7 +35,31 @@ void Renderer::Render(Scene* pScene) const
 			gradient += py / static_cast<float>(m_Width);
 			gradient /= 2.0f;
 
-			ColorRGB finalColor{ gradient, gradient, gradient };
+			float aspectRatio{ (float)m_Width / (float)m_Height }; //Wil be const (move later)
+			Vector3 rayDirection
+			{
+				(((2*(px+0.5f)/m_Width))-1)*aspectRatio,
+				(1 - ((2*(py+0.5f))/ m_Height)),
+				1.f
+			};
+			rayDirection.Normalize();
+			Ray hitRay({ 0,0,0 }, rayDirection);
+
+			ColorRGB finalColor{};
+			HitRecord closestHit{};
+
+			pScene->GetClosestHit(hitRay, closestHit);
+
+			if (closestHit.didHit)
+			{
+				finalColor = materials[closestHit.materialIndex]->Shade();
+				//const float scaled_t = (closestHit.t - 50.f) / 40.f;
+				//finalColor = { scaled_t, scaled_t, scaled_t };
+			}
+
+
+
+			//ColorRGB finalColor{ rayDirection.x, rayDirection.y, rayDirection.z };
 
 			//Update Color in Buffer
 			finalColor.MaxToOne();
