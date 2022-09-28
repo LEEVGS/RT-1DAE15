@@ -12,32 +12,62 @@ namespace dae
 		//SPHERE HIT-TESTS
 		inline bool HitTest_Sphere(const Sphere& sphere, const Ray& ray, HitRecord& hitRecord, bool ignoreHitRecord = false)
 		{
-			float a, b, c, d;
+			float a, b, c, d{};
 			a = Vector3::Dot(ray.direction, ray.direction);
 			b = Vector3::Dot(2 * ray.direction, ray.origin - sphere.origin);
 			c = Vector3::Dot(ray.origin - sphere.origin, ray.origin - sphere.origin) - (sphere.radius * sphere.radius);
-			d = sqrtf((b * b) - (4 * a * c));
-
-			if (AreEqual(d, 0.f))
+			d = (b * b) - (4 * a * c);
+			if (d >= 0.f)
 			{
-				hitRecord.didHit = true;
-				hitRecord.t = b / (2*a);
-				hitRecord.materialIndex = sphere.materialIndex;
-			}
-			else if (d > 0.f)
-			{
-				hitRecord.didHit = true;
-				hitRecord.materialIndex = sphere.materialIndex;
+				d = sqrtf(d);
+				
 				float t1, t2;
 				t1 = (-b + d) / (2 * a);
 				t2 = (-b - d) / (2 * a);
-				if (t1 > t2)
+
+				if (t1 < 0 && t2 < 0)
 				{
-					hitRecord.t = t2;
+					return false;
 				}
-				else
+				if (hitRecord.t > t1)
 				{
+					if (t1 < 0)
+					{
+						return false;
+					}
+					if (t1 < ray.min || t1 > ray.max)
+					{
+						return false;
+					}
+					if (ignoreHitRecord)
+					{
+						return true;
+					}
 					hitRecord.t = t1;
+					hitRecord.materialIndex = sphere.materialIndex;
+					hitRecord.didHit = true;
+					hitRecord.origin = ray.origin + (ray.direction * hitRecord.t);
+					hitRecord.normal = (hitRecord.origin - sphere.origin).Normalized();
+				}
+				if (hitRecord.t > t2)
+				{
+					if (t2 < 0)
+					{
+						return false;
+					}
+					if (t2 < ray.min || t2 > ray.max)
+					{
+						return false;
+					}
+					if (ignoreHitRecord)
+					{
+						return true;
+					}
+					hitRecord.t = t2;
+					hitRecord.materialIndex = sphere.materialIndex;
+					hitRecord.didHit = true;
+					hitRecord.origin = ray.origin + (ray.direction * hitRecord.t);
+					hitRecord.normal = (hitRecord.origin - sphere.origin).Normalized();
 				}
 			}
 			return hitRecord.didHit;
@@ -57,9 +87,26 @@ namespace dae
 			t = (Vector3::Dot((plane.origin - ray.origin), plane.normal) / Vector3::Dot(ray.direction, plane.normal));
 			if (t > FLT_EPSILON)
 			{
-				hitRecord.didHit = true;
-				hitRecord.materialIndex = plane.materialIndex;
-				hitRecord.t = t;
+				if (t < 0)
+				{
+					return false;
+				}
+				if (t < ray.min || t > ray.max)
+				{
+					return false;
+				}
+				if (ignoreHitRecord)
+				{
+					return true;
+				}
+				if (hitRecord.t > t)
+				{
+					hitRecord.t = t;
+					hitRecord.didHit = true;
+					hitRecord.materialIndex = plane.materialIndex;
+					hitRecord.origin = ray.origin + (ray.direction * hitRecord.t);
+					hitRecord.normal = plane.normal;
+				}
 			}
 			return hitRecord.didHit;
 		}
@@ -106,9 +153,7 @@ namespace dae
 		//Direction from target to light
 		inline Vector3 GetDirectionToLight(const Light& light, const Vector3 origin)
 		{
-			//todo W3
-			assert(false && "No Implemented Yet!");
-			return {};
+			return Vector3{ light.origin - origin };
 		}
 
 		inline ColorRGB GetRadiance(const Light& light, const Vector3& target)

@@ -19,6 +19,7 @@ Renderer::Renderer(SDL_Window * pWindow) :
 	//Initialize
 	SDL_GetWindowSize(pWindow, &m_Width, &m_Height);
 	m_pBufferPixels = static_cast<uint32_t*>(m_pBuffer->pixels);
+	//SDL_SetRelativeMouseMode(SDL_TRUE);
 }
 
 void Renderer::Render(Scene* pScene) const
@@ -27,42 +28,50 @@ void Renderer::Render(Scene* pScene) const
 	auto& materials = pScene->GetMaterials();
 	auto& lights = pScene->GetLights();
 
+	float fov{ tanf(camera.fovAngle / 2.f) }; //Will be const (move later)
+	float aspectRatio{ (float)m_Width / (float)m_Height }; //Wil be const (move later)
+
 	for (int px{}; px < m_Width; ++px)
 	{
 		for (int py{}; py < m_Height; ++py)
 		{
-			float gradient = px / static_cast<float>(m_Width);
-			gradient += py / static_cast<float>(m_Width);
-			gradient /= 2.0f;
-
-			float aspectRatio{ (float)m_Width / (float)m_Height }; //Wil be const (move later)
 			Vector3 rayDirection
 			{
-				(((2*(px+0.5f)/m_Width))-1)*aspectRatio,
-				(1 - ((2*(py+0.5f))/ m_Height)),
-				1.f
+				((((2*(px+0.5f)/m_Width))-1)*aspectRatio*fov),		//X
+				((1 - ((2*(py+0.5f))/ m_Height))*fov),				//Y
+				1.f													//Z
 			};
-			rayDirection.Normalize();
-			Ray hitRay({ 0,0,0 }, rayDirection);
+			//rayDirection.Normalize();
+			rayDirection = camera.CalculateCameraToWorld().TransformVector(rayDirection);
+
+			Ray hitRay({ camera.origin }, rayDirection);
+
 
 			ColorRGB finalColor{};
 			HitRecord closestHit{};
 
 			pScene->GetClosestHit(hitRay, closestHit);
-
+			
 			if (closestHit.didHit)
 			{
 				finalColor = materials[closestHit.materialIndex]->Shade();
-				//const float scaled_t = (closestHit.t - 50.f) / 40.f;
-				//finalColor = { scaled_t, scaled_t, scaled_t };
+				closestHit.origin = closestHit.origin + (closestHit.normal * 0.01f);
+				for (Light light : lights)
+				{
+					Vector3 lightDirection = LightUtils::GetDirectionToLight(light, closestHit.origin);
+					float magnitude = lightDirection.Normalize();
+					Ray shadowRay{ closestHit.origin, lightDirection };
+					shadowRay.max = magnitude;
+					if (pScene->DoesHit(shadowRay))
+					{
+						finalColor = finalColor / 2;
+					}
+				}
+				
 			}
 
-
-
-			//ColorRGB finalColor{ rayDirection.x, rayDirection.y, rayDirection.z };
-
 			//Update Color in Buffer
-			finalColor.MaxToOne();
+			finalColor.MaxToOne();													//Chonks lots of cpu time???
 
 			m_pBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBuffer->format,
 				static_cast<uint8_t>(finalColor.r * 255),
