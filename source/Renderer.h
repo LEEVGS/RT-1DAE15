@@ -21,6 +21,8 @@ namespace dae
 		Renderer& operator=(Renderer&&) noexcept = delete;
 
 		void Render(Scene* pScene) const;
+		void ToggleShadows() { m_ShadowsEnabled = !m_ShadowsEnabled; }
+		void CycleLightingMode();
 		bool SaveBufferToImage() const;
 
 	private:
@@ -28,6 +30,16 @@ namespace dae
 
 		SDL_Surface* m_pBuffer{};
 		uint32_t* m_pBufferPixels{};
+
+		enum class LightingMode
+		{
+			ObservedArea,
+			Radiance,
+			BRDF,
+			Combined
+		};
+		bool m_ShadowsEnabled{ true };
+		LightingMode m_CurrentLightingMode{ LightingMode::Combined };
 
 		int m_Width{};
 		int m_Height{};

@@ -13,16 +13,12 @@ namespace dae
 		 */
 		static ColorRGB Lambert(float kd, const ColorRGB& cd)
 		{
-			//todo: W3
-			assert(false && "Not Implemented Yet");
-			return {};
+			return cd * kd / PI;
 		}
 
 		static ColorRGB Lambert(const ColorRGB& kd, const ColorRGB& cd)
 		{
-			//todo: W3
-			assert(false && "Not Implemented Yet");
-			return {};
+			return cd * kd / PI;
 		}
 
 		/**
@@ -36,9 +32,14 @@ namespace dae
 		 */
 		static ColorRGB Phong(float ks, float exp, const Vector3& l, const Vector3& v, const Vector3& n)
 		{
-			//todo: W3
-			assert(false && "Not Implemented Yet");
-			return {};
+			Vector3 reflect = l - 2 * (Vector3::Dot(n, l) * n);
+			float cosAngle = Vector3::Dot(reflect, v);
+			if (cosAngle < 0.f)
+			{
+				cosAngle = 0.f;
+			}
+			float phongSpecular = ks * powf(cosAngle, exp);
+			return ColorRGB{1,1,1} * phongSpecular;
 		}
 
 		/**
@@ -50,9 +51,7 @@ namespace dae
 		 */
 		static ColorRGB FresnelFunction_Schlick(const Vector3& h, const Vector3& v, const ColorRGB& f0)
 		{
-			//todo: W3
-			assert(false && "Not Implemented Yet");
-			return {};
+			return f0 + ((ColorRGB{1.f,1.f,1.f} - f0) * powf(1 - Vector3::Dot(h, v), 5.f));
 		}
 
 		/**
@@ -64,9 +63,8 @@ namespace dae
 		 */
 		static float NormalDistribution_GGX(const Vector3& n, const Vector3& h, float roughness)
 		{
-			//todo: W3
-			assert(false && "Not Implemented Yet");
-			return {};
+			roughness *= roughness;
+			return (roughness) / (PI * powf((powf(Vector3::Dot(n, h), 2)) * (roughness - 1) + 1, 2));
 		}
 
 
@@ -79,9 +77,14 @@ namespace dae
 		 */
 		static float GeometryFunction_SchlickGGX(const Vector3& n, const Vector3& v, float roughness)
 		{
-			//todo: W3
-			assert(false && "Not Implemented Yet");
-			return {};
+			roughness *= roughness;
+			float k = (powf(roughness + 1, 2) / 8);
+			float dotNV = Vector3::Dot(n, v);
+			if (dotNV < 0)
+			{
+				dotNV = 0;
+			}
+			return (dotNV) / ((dotNV) * (1 - k) + k);
 		}
 
 		/**
@@ -94,9 +97,7 @@ namespace dae
 		 */
 		static float GeometryFunction_Smith(const Vector3& n, const Vector3& v, const Vector3& l, float roughness)
 		{
-			//todo: W3
-			assert(false && "Not Implemented Yet");
-			return {};
+			return GeometryFunction_SchlickGGX(n, v, roughness) * GeometryFunction_SchlickGGX(n, l, roughness);
 		}
 
 	}

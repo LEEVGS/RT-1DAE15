@@ -58,6 +58,7 @@ namespace dae
 			int mouseX{}, mouseY{};
 			const uint32_t mouseState = SDL_GetRelativeMouseState(&mouseX, &mouseY); //1 left 4 right
 			
+			//Process data
 			if (mouseState == SDL_BUTTON_LEFT)
 			{
 				origin.z -= mouseY * deltaTime;
