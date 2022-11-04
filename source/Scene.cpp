@@ -246,6 +246,7 @@ namespace dae {
 	void Scene_W4::Initialize()
 	{
 		m_Camera = { { 0.f, 1.f, -5.f }, 45.f };
+		m_Camera.fovAngle = 45.f;
 
 		//Materials
 		const auto matLambert_GrayBlue = AddMaterial(new Material_Lambert({ 0.49f, 0.57f, 0.57f }, 1.f));
@@ -258,35 +259,11 @@ namespace dae {
 		AddPlane(Vector3{ 5.f, 0.f, 0.f }, Vector3{ -1.f, 0.f, 0.f }, matLambert_GrayBlue);; //Right
 		AddPlane(Vector3{ -5.f, 0.f, 0.f }, Vector3{ 1.f, 0.f, 0.f }, matLambert_GrayBlue);; //Left
 
-
-		//Triangle (Temp)
-		//auto triangle = Triangle{ {-.75, .5f, 0.f},  {-0.75f, 2.0f, 0.f}, {.75f, .5f, 0.f} };
-		//triangle.cullMode = TriangleCullMode::NoCulling;
-		//triangle.materialIndex = matLambert_White;
-		//
-		//m_Triangles.emplace_back(triangle);
-
-		//Triangle Mesh
-		//m_pMesh = AddTriangleMesh(TriangleCullMode::NoCulling, matLambert_White);
-		//m_pMesh->positions = { {-0.75, -1.f, 0.f},{-.75f, 1.f, 0.f}, {.75f, 1.f, 1.f}, {.75f, -1.f, 0.f} };
-		//m_pMesh->indices = {
-		//	0,1,2, //Triangle 1
-		//	0,2,3 //Triangle 2
-		//
-		//};
-
 		m_pMesh = AddTriangleMesh(TriangleCullMode::BackFaceCulling, matLambert_White);
 		Utils::ParseOBJ("Resources/lowpoly_bunny2.obj", m_pMesh->positions, m_pMesh->normals, m_pMesh->indices);
+		m_pMesh->Scale({ 2.f,2.f,2.f });
+		m_pMesh->UpdateAABB();
 		m_pMesh->UpdateTransforms();
-		m_pMesh->Scale({ .7f,.7f,.7f });
-		m_pMesh->Translate({ .0f, 1.f, 0.f });
-
-		//m_pMesh->CalculateNormals();
-
-		//m_pMesh->Translate({ 0.f,1.5f,0.f });
-		//m_pMesh->RotateY(45);
-
-		//m_pMesh->UpdateTransforms();
 
 		//Light
 		AddPointLight(Vector3{ 0.f, 5.f, 5.f }, 50.f, ColorRGB{ 1.f, 0.61f, .45f });//backLight
@@ -303,6 +280,7 @@ namespace dae {
 	{
 		sceneName = "Reference Scene";
 		m_Camera.origin = { 0.f, 3.0f, -9.0f };
+		m_Camera.fovAngle = 45.0f;
 
 		const auto matCT_GrayRoughMetal = AddMaterial(new Material_CookTorrence({ 0.972f, 0.960f, 0.915f }, 1.0f, 1.0f));
 		const auto matCT_GrayMediumMetal = AddMaterial(new Material_CookTorrence({ 0.972f, 0.960f, 0.915f }, 1.0f, 0.6f));
@@ -331,21 +309,23 @@ namespace dae {
 
 		const Triangle baseTriangle = { Vector3(-0.75f, 1.5f, 0.0f), Vector3(0.75f, 0.0f, 0.0f), Vector3(-0.75f, 0.0f, 0.0f) };
 
-		m_pMeshes.resize(3);
-
 		m_pMeshes[0] = AddTriangleMesh(TriangleCullMode::BackFaceCulling, matLambert_White);
 		m_pMeshes[0]->AppendTriangle(baseTriangle, true);
+
 		m_pMeshes[0]->Translate({ -1.75f, 4.5f, 0.0f });
+		m_pMeshes[0]->UpdateAABB();
 		m_pMeshes[0]->UpdateTransforms();
 
 		m_pMeshes[1] = AddTriangleMesh(TriangleCullMode::FrontFaceCulling, matLambert_White);
 		m_pMeshes[1]->AppendTriangle(baseTriangle, true);
 		m_pMeshes[1]->Translate({ 0.0f, 4.5f, 0.0f });
+		m_pMeshes[1]->UpdateAABB();
 		m_pMeshes[1]->UpdateTransforms();
 
 		m_pMeshes[2] = AddTriangleMesh(TriangleCullMode::NoCulling, matLambert_White);
 		m_pMeshes[2]->AppendTriangle(baseTriangle, true);
 		m_pMeshes[2]->Translate({ 1.75f, 4.5f, 0.0f });
+		m_pMeshes[2]->UpdateAABB();
 		m_pMeshes[2]->UpdateTransforms();
 
 		//Light
@@ -356,10 +336,10 @@ namespace dae {
 	void Scene_W4_Ref::Update(dae::Timer* pTimer)
 	{
 		Scene::Update(pTimer);
-		for (int i = 0; i < m_pMeshes.size(); i++)
+		for (TriangleMesh* pMesh : m_pMeshes)
 		{
-			m_pMeshes[i]->RotateY(PI_DIV_2 * pTimer->GetTotal());
-			m_pMeshes[i]->UpdateTransforms();
+			pMesh->RotateY(PI_DIV_2 * pTimer->GetTotal());
+			pMesh->UpdateTransforms();
 		}
 	}
 #pragma endregion

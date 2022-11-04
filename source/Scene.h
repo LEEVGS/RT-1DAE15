@@ -140,6 +140,6 @@ namespace dae
 		void Initialize() override;
 		void Update(dae::Timer* pTimer) override;
 	private:
-		std::vector<TriangleMesh*> m_pMeshes{};
+		TriangleMesh* m_pMeshes[3]{};
 	};
 }
