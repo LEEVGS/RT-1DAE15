@@ -76,6 +76,7 @@ namespace dae {
 				return true;
 			}
 		}
+		
 		return false;
 	}
 
@@ -205,9 +206,9 @@ namespace dae {
 	{
 		m_Camera = Camera{ { 0.f, 3.f, -9.f }, 45.f };
 
-		const auto matCT_GrayRoughMetal = AddMaterial(new Material_CookTorrence({ .972, .960f, .915f }, 1.f, 1.f));
-		const auto matCT_GrayMediumMetal = AddMaterial(new Material_CookTorrence({ .972, .960f, .915f }, 1.f, .6f));
-		const auto matCT_GraySmoothMetal = AddMaterial(new Material_CookTorrence({ .972, .960f, .915f }, 1.f, .1f));
+		const auto matCT_GrayRoughMetal = AddMaterial(new Material_CookTorrence({ .972f, .960f, .915f }, 1.f, 1.f));
+		const auto matCT_GrayMediumMetal = AddMaterial(new Material_CookTorrence({ .972f, .960f, .915f }, 1.f, .6f));
+		const auto matCT_GraySmoothMetal = AddMaterial(new Material_CookTorrence({ .972f, .960f, .915f }, 1.f, .1f));
 		const auto matCT_GrayRoughPlastic = AddMaterial(new Material_CookTorrence({ .75f, .75f, .75f }, 0.f, 1.f));
 		const auto matCT_GrayMediumPlastic = AddMaterial(new Material_CookTorrence({ .75f, .75f, .75f }, 0.f, .6f));
 		const auto matCT_GraySmoothPlastic = AddMaterial(new Material_CookTorrence({ .75f, .75f, .75f }, 0.f, .1f));
@@ -246,6 +247,7 @@ namespace dae {
 	void Scene_W4::Initialize()
 	{
 		m_Camera = { { 0.f, 1.f, -5.f }, 45.f };
+		m_Camera.origin = { 0.f, 3.f, -9.f };
 		m_Camera.fovAngle = 45.f;
 
 		//Materials
@@ -262,8 +264,8 @@ namespace dae {
 		m_pMesh = AddTriangleMesh(TriangleCullMode::BackFaceCulling, matLambert_White);
 		Utils::ParseOBJ("Resources/lowpoly_bunny2.obj", m_pMesh->positions, m_pMesh->normals, m_pMesh->indices);
 		m_pMesh->Scale({ 2.f,2.f,2.f });
-		m_pMesh->UpdateAABB();
 		m_pMesh->UpdateTransforms();
+		m_pMesh->UpdateAABB();
 
 		//Light
 		AddPointLight(Vector3{ 0.f, 5.f, 5.f }, 50.f, ColorRGB{ 1.f, 0.61f, .45f });//backLight

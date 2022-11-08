@@ -30,30 +30,34 @@ namespace dae
 		float totalPitch{0.f};
 		float totalYaw{0.f};
 
+		float triangleHeight;
+
 		Matrix cameraToWorld{};
 
 
 		Matrix CalculateCameraToWorld()
 		{
-			right = Vector3::Cross(Vector3::UnitY, forward);
+			right = Vector3::Cross(Vector3::UnitY, forward).Normalized();
 			up = Vector3::Cross(forward, right);
-			Matrix data{};
-			data[0] = {right.x, right.y, right.z, 0.f};
-			data[1] = {up.x, up.y, up.z, 0.f};
-			data[2] = {forward.x, forward.y, forward.z, 0.f};
-			data[3] = {origin.x, origin.y, origin.z, 1.f};
-			return data;
+			cameraToWorld = Matrix
+			{
+				right,
+				up,
+				forward,
+				origin
+			};
+			return cameraToWorld;
 		}
 
 		void Update(Timer* pTimer)
 		{
 			const float deltaTime = pTimer->GetElapsed();
 			const float cameraSpeed{ 10.f };
-
+			
 			//Keyboard Input
 			const uint8_t* pKeyboardState = SDL_GetKeyboardState(nullptr);
-
-
+			
+			
 			//Mouse Input
 			int mouseX{}, mouseY{};
 			const uint32_t mouseState = SDL_GetRelativeMouseState(&mouseX, &mouseY); //1 left 4 right
@@ -67,7 +71,7 @@ namespace dae
 			{
 				origin.y -= mouseY * deltaTime;
 			}
-
+			
 			if (pKeyboardState[SDL_SCANCODE_W] || pKeyboardState[SDL_SCANCODE_UP])
 			{
 				origin += cameraSpeed * deltaTime * forward;
@@ -89,9 +93,8 @@ namespace dae
 				totalPitch -= cameraSpeed * TO_RADIANS * mouseY * deltaTime;
 				totalYaw -= cameraSpeed * TO_RADIANS * mouseX * deltaTime;
 			}
-
+			
 			forward = Matrix::CreateRotation(totalPitch, totalYaw, 0.f).TransformVector(Vector3::UnitZ);
-			forward.Normalize();
 		}
 	};
 }

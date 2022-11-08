@@ -34,7 +34,7 @@ void Renderer::Render(Scene* pScene) const
 	auto& materials = pScene->GetMaterials();
 	auto& lights = pScene->GetLights();
 
-	float fov{ tanf(camera.fovAngle / 2.f) }; //Will be const (move later)
+	float fov{ tanf(camera.fovAngle / 2.f * TO_RADIANS) }; //Will be const (move later)
 	float aspectRatio{ (float)m_Width / (float)m_Height }; //Wil be const (move later)
 
 	camera.cameraToWorld = camera.CalculateCameraToWorld();
@@ -107,7 +107,7 @@ void Renderer::RenderPixel(Scene* pScene, uint32_t pixelIndex, float fov, float 
 	rayDirection.Normalize();
 	rayDirection = camera.cameraToWorld.TransformVector(rayDirection);
 
-	Ray hitRay({ camera.origin }, rayDirection);
+	Ray hitRay({ camera.origin }, rayDirection, rayDirection.Inversed());
 
 
 	ColorRGB finalColor{};
@@ -122,9 +122,8 @@ void Renderer::RenderPixel(Scene* pScene, uint32_t pixelIndex, float fov, float 
 		{
 			Vector3 lightDirection = LightUtils::GetDirectionToLight(light, closestHit.origin);
 			float magnitude = lightDirection.Normalize();
-			Ray shadowRay{ closestHit.origin, lightDirection };
+			Ray shadowRay{ closestHit.origin, lightDirection, lightDirection.Inversed()};
 			shadowRay.max = magnitude;
-
 			if (m_ShadowsEnabled && pScene->DoesHit(shadowRay))
 			{
 				//finalColor = finalColor * 0.95f;

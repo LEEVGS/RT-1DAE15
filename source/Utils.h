@@ -1,75 +1,188 @@
 #pragma once
 #include <cassert>
 #include <fstream>
+#include <xmmintrin.h>
 #include "Math.h"
 #include "DataTypes.h"
 
 namespace dae
 {
+	namespace Utils
+	{
+		// Fast Sqrt	Source: https://geometrian.com/programming/tutorials/fastsqrt/index.php
+		inline float FastSqrt(float arg) {
+			return _mm_cvtss_f32(
+				_mm_sqrt_ss(_mm_set_ps1(arg))
+			);
+		}
+		//Just parses vertices and indices
+#pragma warning(push)
+#pragma warning(disable : 4505) //Warning unreferenced local function
+		static bool ParseOBJ(const std::string& filename, std::vector<Vector3>& positions, std::vector<Vector3>& normals, std::vector<int>& indices)
+		{
+			std::ifstream file(filename);
+			if (!file)
+				return false;
+
+			std::string sCommand;
+			// start a while iteration ending when the end of file is reached (ios::eof)
+			while (!file.eof())
+			{
+				//read the first word of the string, use the >> operator (istream::operator>>) 
+				file >> sCommand;
+				//use conditional statements to process the different commands	
+				if (sCommand == "#")
+				{
+					// Ignore Comment
+				}
+				else if (sCommand == "v")
+				{
+					//Vertex
+					float x, y, z;
+					file >> x >> y >> z;
+					positions.push_back({ x, y, z });
+				}
+				else if (sCommand == "f")
+				{
+					float i0, i1, i2;
+					file >> i0 >> i1 >> i2;
+
+					indices.push_back((int)i0 - 1);
+					indices.push_back((int)i1 - 1);
+					indices.push_back((int)i2 - 1);
+				}
+				//read till end of line and ignore all remaining chars
+				file.ignore(1000, '\n');
+
+				if (file.eof())
+					break;
+			}
+
+			//Precompute normals
+			for (uint64_t index = 0; index < indices.size(); index += 3)
+			{
+				uint32_t i0 = indices[index];
+				uint32_t i1 = indices[index + 1];
+				uint32_t i2 = indices[index + 2];
+
+				Vector3 edgeV0V1 = positions[i1] - positions[i0];
+				Vector3 edgeV0V2 = positions[i2] - positions[i0];
+				Vector3 normal = Vector3::Cross(edgeV0V1, edgeV0V2);
+
+				if (isnan(normal.x))
+				{
+					int k = 0;
+				}
+
+				normal.Normalize();
+				if (isnan(normal.x))
+				{
+					int k = 0;
+				}
+
+				normals.push_back(normal);
+			}
+
+			return true;
+		}
+#pragma warning(pop)
+	}
 	namespace GeometryUtils
 	{
 #pragma region Sphere HitTest
 		//SPHERE HIT-TESTS
 		inline bool HitTest_Sphere(const Sphere& sphere, const Ray& ray, HitRecord& hitRecord, bool ignoreHitRecord = false)
 		{
-			float a, b, c, d{};
-			a = Vector3::Dot(ray.direction, ray.direction);
-			b = Vector3::Dot(2 * ray.direction, ray.origin - sphere.origin);
-			c = Vector3::Dot(ray.origin - sphere.origin, ray.origin - sphere.origin) - (sphere.radius * sphere.radius);
-			d = (b * b) - (4 * a * c);
-			if (d >= 0.f)
+			Vector3 toCenter = sphere.origin - ray.origin;
+			float distance = Vector3::Dot(toCenter, ray.direction);
+			float squaredDistance = toCenter.SqrMagnitude() - Square(distance);
+			float squaredSpherePoint = Square(sphere.radius) - squaredDistance;
+			if (squaredSpherePoint < 0.f)
 			{
-				d = sqrtf(d);
-				
-				float t1, t2;
-				t1 = (-b + d) / (2 * a);
-				t2 = (-b - d) / (2 * a);
-
-				if (t1 < 0 && t2 < 0)
-				{
-					return false;
-				}
-				if (hitRecord.t > t1)
-				{
-					if (t1 < 0)
-					{
-						return false;
-					}
-					if (t1 < ray.min || t1 > ray.max)
-					{
-						return false;
-					}
-					if (ignoreHitRecord)
-					{
-						return true;
-					}
-					hitRecord.t = t1;
-					hitRecord.materialIndex = sphere.materialIndex;
-					hitRecord.didHit = true;
-					hitRecord.origin = ray.origin + (ray.direction * hitRecord.t);
-					hitRecord.normal = (hitRecord.origin - sphere.origin).Normalized();
-				}
-				if (hitRecord.t > t2)
-				{
-					if (t2 < 0)
-					{
-						return false;
-					}
-					if (t2 < ray.min || t2 > ray.max)
-					{
-						return false;
-					}
-					if (ignoreHitRecord)
-					{
-						return true;
-					}
-					hitRecord.t = t2;
-					hitRecord.materialIndex = sphere.materialIndex;
-					hitRecord.didHit = true;
-					hitRecord.origin = ray.origin + (ray.direction * hitRecord.t);
-					hitRecord.normal = (hitRecord.origin - sphere.origin).Normalized();
-				}
+				return false;
 			}
+			float pointToHitPoint = Utils::FastSqrt(squaredSpherePoint);
+			float t = distance - pointToHitPoint;
+			
+			if (t < ray.min || t > ray.max)
+			{
+				return false;
+			}
+			if (ignoreHitRecord)
+			{
+				return true;
+			}
+
+			hitRecord.didHit = true;
+			if (hitRecord.t > t)
+			{
+				hitRecord.t = t;
+				hitRecord.materialIndex = sphere.materialIndex;
+				hitRecord.origin = ray.origin + (ray.direction * hitRecord.t);
+				hitRecord.normal = (hitRecord.origin - sphere.origin).Normalized();
+			}
+			
+
+#pragma region Analytic
+			//float a, b, c, d{};
+			//a = Vector3::Dot(ray.direction, ray.direction);
+			//b = Vector3::Dot(2 * ray.direction, ray.origin - sphere.origin);
+			//c = Vector3::Dot(ray.origin - sphere.origin, ray.origin - sphere.origin) - (sphere.radius * sphere.radius);
+			//d = (b * b) - (4 * a * c);
+			//if (d >= 0.f)
+			//{
+			//	d = sqrtf(d);
+			//
+			//	float t1, t2;
+			//	t1 = (-b + d) / (2 * a);
+			//	t2 = (-b - d) / (2 * a);
+			//
+			//	if (t1 < 0 && t2 < 0)
+			//	{
+			//		return false;
+			//	}
+			//	if (hitRecord.t > t1)
+			//	{
+			//		if (t1 < 0)
+			//		{
+			//			return false;
+			//		}
+			//		if (t1 < ray.min || t1 > ray.max)
+			//		{
+			//			return false;
+			//		}
+			//		if (ignoreHitRecord)
+			//		{
+			//			return true;
+			//		}
+			//		hitRecord.t = t1;
+			//		hitRecord.materialIndex = sphere.materialIndex;
+			//		hitRecord.didHit = true;
+			//		hitRecord.origin = ray.origin + (ray.direction * hitRecord.t);
+			//		hitRecord.normal = (hitRecord.origin - sphere.origin).Normalized();
+			//	}
+			//	if (hitRecord.t > t2)
+			//	{
+			//		if (t2 < 0)
+			//		{
+			//			return false;
+			//		}
+			//		if (t2 < ray.min || t2 > ray.max)
+			//		{
+			//			return false;
+			//		}
+			//		if (ignoreHitRecord)
+			//		{
+			//			return true;
+			//		}
+			//		hitRecord.t = t2;
+			//		hitRecord.materialIndex = sphere.materialIndex;
+			//		hitRecord.didHit = true;
+			//		hitRecord.origin = ray.origin + (ray.direction * hitRecord.t);
+			//		hitRecord.normal = (hitRecord.origin - sphere.origin).Normalized();
+			//	}
+			//}
+#pragma endregion
 			return hitRecord.didHit;
 		}
 
@@ -83,8 +196,7 @@ namespace dae
 		//PLANE HIT-TESTS
 		inline bool HitTest_Plane(const Plane& plane, const Ray& ray, HitRecord& hitRecord, bool ignoreHitRecord = false)
 		{
-			float t;
-			t = (Vector3::Dot((plane.origin - ray.origin), plane.normal) / Vector3::Dot(ray.direction, plane.normal));
+			float t = (Vector3::Dot((plane.origin - ray.origin), plane.normal) / Vector3::Dot(ray.direction, plane.normal));
 			if (t > FLT_EPSILON)
 			{
 				if (t < 0)
@@ -101,11 +213,11 @@ namespace dae
 				}
 				if (hitRecord.t > t)
 				{
-					hitRecord.t = t;
 					hitRecord.didHit = true;
 					hitRecord.materialIndex = plane.materialIndex;
-					hitRecord.origin = ray.origin + (ray.direction * hitRecord.t);
+					hitRecord.origin = ray.origin + ray.direction * t;
 					hitRecord.normal = plane.normal;
+					hitRecord.t = t;
 				}
 			}
 			return hitRecord.didHit;
@@ -129,7 +241,7 @@ namespace dae
 			}
 
 			TriangleCullMode mode = triangle.cullMode;
-			if (mode != TriangleCullMode::NoCulling && ignoreHitRecord == true)
+			if (ignoreHitRecord && mode != TriangleCullMode::NoCulling)
 			{
 				if (mode == TriangleCullMode::FrontFaceCulling)
 				{
@@ -161,7 +273,7 @@ namespace dae
 
 			//New code (https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm)
 			Vector3 edge1, edge2, h, s, q;
-			float a, f, u, v;
+			float f, u, v;
 
 			edge1 = triangle.v1 - triangle.v0;
 			edge2 = triangle.v2 - triangle.v0;
@@ -287,54 +399,100 @@ namespace dae
 		}
 #pragma endregion
 #pragma region TriangeMesh HitTest
-		inline bool SlabTest_TriangleMesh(const TriangleMesh& mesh, const Ray& ray)
+		inline bool SlabTest_TriangleMesh(const Ray& ray, const Vector3& minAABB, const Vector3& maxAABB)
 		{
-			float tx1 = (mesh.transformedMinAABB.x - ray.origin.x) / ray.direction.x;
-			float tx2 = (mesh.transformedMaxAABB.x - ray.origin.x) / ray.direction.x;
+			float tx1 = (minAABB.x - ray.origin.x) * ray.invertedDirection.x;
+			float tx2 = (maxAABB.x - ray.origin.x) * ray.invertedDirection.x;
 
 			float tmin = std::min(tx1, tx2);
 			float tmax = std::max(tx1, tx2);
 
-			float ty1 = (mesh.transformedMinAABB.y - ray.origin.y) / ray.direction.y;
-			float ty2 = (mesh.transformedMaxAABB.y - ray.origin.y) / ray.direction.y;
+			float ty1 = (minAABB.y - ray.origin.y) * ray.invertedDirection.y;
+			float ty2 = (maxAABB.y - ray.origin.y) * ray.invertedDirection.y;
 
 			tmin = std::max(tmin, std::min(ty1, ty2));
 			tmax = std::min(tmax, std::max(ty1, ty2));
 
-			float tz1 = (mesh.transformedMinAABB.z - ray.origin.z) / ray.direction.z;
-			float tz2 = (mesh.transformedMaxAABB.z - ray.origin.z) / ray.direction.z;
+			float tz1 = (minAABB.z - ray.origin.z) * ray.invertedDirection.z;
+			float tz2 = (maxAABB.z - ray.origin.z) * ray.invertedDirection.z;
 
 			tmin = std::max(tmin, std::min(tz1, tz2));
 			tmax = std::min(tmax, std::max(tz1, tz2));
 
 			return tmax > 0 && tmax >= tmin;
 		}
-		inline bool HitTest_TriangleMesh(const TriangleMesh& mesh, const Ray& ray, HitRecord& hitRecord, bool ignoreHitRecord = false)
+		inline void IntersectBVH(const TriangleMesh& mesh, const Ray& ray, Triangle& sharedTriangle, HitRecord& hitRecord, bool& hasHit, HitRecord& curClosestHit, bool ignoreHitRecord, unsigned int bvhNodeIdx)
 		{
-			if (!SlabTest_TriangleMesh(mesh, ray))
+			BVHNode& node = mesh.pBvhNodes[bvhNodeIdx];
+
+			if (!SlabTest_TriangleMesh(ray, node.aabbMin, node.aabbMax))
 			{
-				return false;
+				return;
 			}
-			bool hasHit{false};
-			Triangle tempTriangle{};
-			tempTriangle.cullMode = mesh.cullMode;
-			tempTriangle.materialIndex = mesh.materialIndex;
-			for (int i = 0; i < mesh.indices.size(); i+=3)
+			
+			if (!node.IsLeaf())
 			{
-				tempTriangle.v0 = mesh.transformedPositions[mesh.indices[i]];
-				tempTriangle.v1 = mesh.transformedPositions[mesh.indices[i + 1]];
-				tempTriangle.v2 = mesh.transformedPositions[mesh.indices[i + 2]];
-				tempTriangle.normal = mesh.transformedNormals[i / 3];
-				if (!HitTest_Triangle(tempTriangle, ray, hitRecord, ignoreHitRecord))
+				IntersectBVH(mesh, ray, sharedTriangle, hitRecord, hasHit, curClosestHit, ignoreHitRecord, node.leftChild);
+				IntersectBVH(mesh, ray, sharedTriangle, hitRecord, hasHit, curClosestHit, ignoreHitRecord, node.leftChild + 1);
+				return;
+			}
+			for (uint32_t i = 0; i < node.indicesCount; i+=3)
+			{
+				sharedTriangle.v0 = mesh.transformedPositions[mesh.indices[node.firstIndice + i]];
+				sharedTriangle.v1 = mesh.transformedPositions[mesh.indices[node.firstIndice + i + 1]];
+				sharedTriangle.v2 = mesh.transformedPositions[mesh.indices[node.firstIndice + i + 2]];
+				sharedTriangle.normal = mesh.transformedNormals[(node.firstIndice + i) / 3];
+
+				if (!HitTest_Triangle(sharedTriangle, ray, curClosestHit, ignoreHitRecord))
 				{
 					continue;
 				}
+				hasHit = true;
+
 				if (ignoreHitRecord)
 				{
-					return true;
+					return;
 				}
-				hasHit = true;
+
+				if (hitRecord.t > curClosestHit.t)
+				{
+					hitRecord = curClosestHit;
+				}
 			}
+		}
+		inline bool HitTest_TriangleMesh(const TriangleMesh& mesh, const Ray& ray, HitRecord& hitRecord, bool ignoreHitRecord = false)
+		{
+			HitRecord tempHit{};
+			bool hasHit = false;
+			
+			Triangle tempTriangle{};
+			tempTriangle.cullMode = mesh.cullMode;
+			tempTriangle.materialIndex = mesh.materialIndex;
+			
+			IntersectBVH(mesh, ray, tempTriangle, hitRecord, hasHit, tempHit, ignoreHitRecord, 0);
+
+			//Lesson method
+			//if (!SlabTest_TriangleMesh(ray, mesh.minAABB, mesh.maxAABB))
+			//{
+			//	return false;
+			//}
+			//
+			//for (int i = 0; i < mesh.indices.size(); i+=3)
+			//{
+			//	tempTriangle.v0 = mesh.transformedPositions[mesh.indices[i]];
+			//	tempTriangle.v1 = mesh.transformedPositions[mesh.indices[i + 1]];
+			//	tempTriangle.v2 = mesh.transformedPositions[mesh.indices[i + 2]];
+			//	tempTriangle.normal = mesh.transformedNormals[i / 3];
+			//	if (!HitTest_Triangle(tempTriangle, ray, hitRecord, ignoreHitRecord))
+			//	{
+			//		continue;
+			//	}
+			//	hasHit = true;
+			//	if (ignoreHitRecord)
+			//	{
+			//		return true;
+			//	}
+			//}
 			return hasHit;
 		}
 
@@ -360,78 +518,5 @@ namespace dae
 		}
 	}
 
-	namespace Utils
-	{
-		//Just parses vertices and indices
-#pragma warning(push)
-#pragma warning(disable : 4505) //Warning unreferenced local function
-		static bool ParseOBJ(const std::string& filename, std::vector<Vector3>& positions, std::vector<Vector3>& normals, std::vector<int>& indices)
-		{
-			std::ifstream file(filename);
-			if (!file)
-				return false;
-
-			std::string sCommand;
-			// start a while iteration ending when the end of file is reached (ios::eof)
-			while (!file.eof())
-			{
-				//read the first word of the string, use the >> operator (istream::operator>>) 
-				file >> sCommand;
-				//use conditional statements to process the different commands	
-				if (sCommand == "#")
-				{
-					// Ignore Comment
-				}
-				else if (sCommand == "v")
-				{
-					//Vertex
-					float x, y, z;
-					file >> x >> y >> z;
-					positions.push_back({ x, y, z });
-				}
-				else if (sCommand == "f")
-				{
-					float i0, i1, i2;
-					file >> i0 >> i1 >> i2;
-
-					indices.push_back((int)i0 - 1);
-					indices.push_back((int)i1 - 1);
-					indices.push_back((int)i2 - 1);
-				}
-				//read till end of line and ignore all remaining chars
-				file.ignore(1000, '\n');
-
-				if (file.eof()) 
-					break;
-			}
-
-			//Precompute normals
-			for (uint64_t index = 0; index < indices.size(); index += 3)
-			{
-				uint32_t i0 = indices[index];
-				uint32_t i1 = indices[index + 1];
-				uint32_t i2 = indices[index + 2];
-
-				Vector3 edgeV0V1 = positions[i1] - positions[i0];
-				Vector3 edgeV0V2 = positions[i2] - positions[i0];
-				Vector3 normal = Vector3::Cross(edgeV0V1, edgeV0V2);
-
-				if(isnan(normal.x))
-				{
-					int k = 0;
-				}
-
-				normal.Normalize();
-				if (isnan(normal.x))
-				{
-					int k = 0;
-				}
-
-				normals.push_back(normal);
-			}
-
-			return true;
-		}
-#pragma warning(pop)
-	}
+	
 }
